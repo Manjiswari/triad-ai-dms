@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Admin Settings & Dynamic Metadata - Triad AI DMS{% endblock %}
+{% block content %}
+<div class="space-y-8 max-w-5xl mx-auto">
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-sliders text-brand-600"></i> Admin & Metadata Configuration</h1>
+            <p class="text-slate-500 text-sm mt-1">Dynamically define and edit custom metadata fields without hardcoding.</p>
+        </div>
+        <button onclick="openNewFieldModal()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-xs shadow-sm">+ Add Dynamic Field</button>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+        <h2 class="text-base font-bold text-slate-800 border-b border-slate-100 pb-2">Dynamic Document Fields</h2>
+        <div id="fields-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+</div>
+
+<div id="field-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full border border-slate-200 p-6 space-y-4">
+        <h3 id="modal-field-title" class="font-bold text-slate-800 text-base">New Dynamic Field</h3>
+        <form id="field-form" onsubmit="handleFieldSubmit(event)" class="space-y-4 text-xs">
+            <input type="hidden" id="edit-field-id">
+            <div>
+                <label class="block font-semibold uppercase text-slate-500 mb-1">Field Name (Key)</label>
+                <input type="text" id="field-name" required placeholder="e.g. Audit Type" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs">
+            </div>
+            <div>
+                <label class="block font-semibold uppercase text-slate-500 mb-1">Display Label</label>
+                <input type="text" id="field-label" placeholder="e.g. Audit Category" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs">
+            </div>
+            <div>
+                <label class="block font-semibold uppercase text-slate-500 mb-1">Field Type</label>
+                <select id="field-type" onchange="document.getElementById('options-group').classList.toggle('hidden', this.value !== 'select')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white">
+                    <option value="text">Text</option>
+                    <option value="select">Dropdown / Select</option>
+                    <option value="number">Numeric</option>
+                </select>
+            </div>
+            <div id="options-group" class="hidden">
+                <label class="block font-semibold uppercase text-slate-500 mb-1">Options (Comma separated)</label>
+                <input type="text" id="field-options" placeholder="Financial, Technical, Legal" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs">
+            </div>
+            <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" onclick="document.getElementById('field-modal').classList.add('hidden')" class="px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg">Cancel</button>
+                <button type="submit" class="px-4 py-1.5 bg-brand-600 text-white rounded-lg font-semibold">Save Field</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    let fieldsData = [];
+    async function initAdminPage() {
+        const res = await apiFetch('/fields');
+        const container = document.getElementById('fields-list');
+        container.innerHTML = '';
+        if (res.ok && res.data?.fields) {
+            fieldsData = res.data.fields;
+            fieldsData.forEach(field => {
+                const card = document.createElement('div');
+                card.className = 'p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-between';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-sm font-bold text-slate-900">${field.label || field.name}</span>
+                            <span class="text-[10px] uppercase font-bold px-2 py-0.5 bg-brand-50 text-brand-700 rounded">${field.type}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">${field.options ? field.options.join(', ') : 'Free text'}</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+    }
+    function openNewFieldModal() {
+        document.getElementById('edit-field-id').value = '';
+        document.getElementById('field-name').value = '';
+        document.getElementById('field-label').value = '';
+        document.getElementById('field-type').value = 'text';
+        document.getElementById('field-options').value = '';
+        document.getElementById('options-group').classList.add('hidden');
+        document.getElementById('field-modal').classList.remove('hidden');
+    }
+    async function handleFieldSubmit(e) {
+        e.preventDefault();
+        const name = document.getElementById('field-name').value.trim();
+        const label = document.getElementById('field-label').value.trim();
+        const type = document.getElementById('field-type').value;
+        const rawOptions = document.getElementById('field-options').value.trim();
+        const res = await apiFetch('/fields', {
+            method: 'POST',
+            body: JSON.stringify({
+                name,
+                label: label || name,
+                type,
+                options: rawOptions ? rawOptions.split(',').map(s => s.trim()).filter(Boolean) : []
+            })
+        });
+        if (res.ok) {
+            showToast('Field created!', 'success');
+            document.getElementById('field-modal').classList.add('hidden');
+            initAdminPage();
+        } else {
+            showToast(res.data?.error || 'Failed', 'error');
+        }
+    }
+    document.addEventListener('DOMContentLoaded', initAdminPage);
+</script>
+{% endblock %}

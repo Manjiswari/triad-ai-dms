@@ -1,0 +1,27 @@
+/* Custom DMS Theme */
+.nav-link.active {
+    background-color: #f1f5f9;
+    color: #16a34a;
+    font-weight: 600;
+}
+
+.modal-backdrop {
+    background-color: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #f8fafc;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+mark {
+    padding: 0.1em 0.3em;
+    border-radius: 0.25rem;
+}

@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: triad_dms_mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: dms_db
+    volumes:
+      - mongo_data:/data/db
+
+  dms_backend:
+    build: .
+    container_name: triad_dms_app
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/dms_db
+      - DB_NAME=dms_db
+      - PORT=5000
+    depends_on:
+      - mongodb
+
+volumes:
+  mongo_data:

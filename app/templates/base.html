@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Triad AI - Document Management System{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <a href="/" class="flex items-center space-x-2 group">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-folder-closed text-lg"></i>
+                        </div>
+                        <div>
+                            <span class="text-xl font-bold bg-gradient-to-r from-slate-900 via-slate-800 to-brand-700 bg-clip-text text-transparent">Triad DMS</span>
+                            <span class="text-xs block text-slate-400 -mt-1 font-medium">Enterprise RBAC + OCR</span>
+                        </div>
+                    </a>
+
+                    <div class="hidden md:flex items-center space-x-1 pl-8">
+                        <a href="/" id="nav-dashboard" class="nav-link px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:text-brand-600 hover:bg-slate-50 transition">
+                            <i class="fa-solid fa-layer-group mr-1.5 text-slate-400"></i>Dashboard
+                        </a>
+                        <a href="/search" id="nav-search" class="nav-link px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:text-brand-600 hover:bg-slate-50 transition">
+                            <i class="fa-solid fa-magnifying-glass mr-1.5 text-slate-400"></i>OCR Search
+                        </a>
+                        <a href="/requests" id="nav-requests" class="nav-link px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:text-brand-600 hover:bg-slate-50 transition relative">
+                            <i class="fa-solid fa-inbox mr-1.5 text-slate-400"></i>Access Requests
+                            <span id="requests-badge" class="hidden absolute top-1 right-0 -mt-1 -mr-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-500 text-white">0</span>
+                        </a>
+                        <a href="/admin" id="nav-admin" class="nav-link px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:text-brand-600 hover:bg-slate-50 transition">
+                            <i class="fa-solid fa-sliders mr-1.5 text-slate-400"></i>Settings & Metadata
+                        </a>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <div id="auth-logged-in" class="hidden flex items-center space-x-3">
+                        <div class="text-right hidden sm:block">
+                            <div class="text-sm font-semibold text-slate-800" id="current-username">User</div>
+                            <div class="text-xs text-slate-500 flex items-center justify-end space-x-1">
+                                <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span id="current-division" class="font-medium text-brand-700">Division</span>
+                                <span class="text-slate-300">•</span>
+                                <span id="current-role" class="uppercase text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-semibold">ROLE</span>
+                            </div>
+                        </div>
+
+                        <div class="relative">
+                            <button id="quick-switch-btn" title="Quick Switch Division / User" class="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 text-xs font-medium flex items-center space-x-1">
+                                <i class="fa-solid fa-arrows-rotate text-slate-400"></i>
+                                <span class="hidden md:inline">Switch Demo User</span>
+                            </button>
+                            <div id="quick-switch-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 z-50 text-xs">
+                                <div class="px-3 py-1 font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Fast Demo Login</div>
+                                <button onclick="quickLogin('alice', 'Alice@123')" class="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center justify-between">
+                                    <span><strong>Alice</strong> (Division A)</span>
+                                    <span class="text-emerald-600 font-medium">User</span>
+                                </button>
+                                <button onclick="quickLogin('bob', 'Bob@123')" class="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center justify-between">
+                                    <span><strong>Bob</strong> (Division B)</span>
+                                    <span class="text-blue-600 font-medium">User</span>
+                                </button>
+                                <button onclick="quickLogin('admin', 'Admin@123')" class="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center justify-between border-t border-slate-100">
+                                    <span><strong>Admin</strong> (Super Admin)</span>
+                                    <span class="text-purple-600 font-medium">Admin</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button onclick="logout()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 text-xs font-semibold hover:bg-red-50 transition">
+                            <i class="fa-solid fa-right-from-bracket mr-1"></i>Logout
+                        </button>
+                    </div>
+
+                    <div id="auth-logged-out" class="flex items-center space-x-2">
+                        <a href="/login" class="px-4 py-2 text-sm font-medium text-slate-700 hover:text-brand-600">Log In</a>
+                        <a href="/login?tab=register" class="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm transition">Sign Up</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <div>
+                <strong>Triad AI Document Management System (DMS)</strong> • Dynamic Metadata & RBAC Engine
+            </div>
+            <div class="flex items-center space-x-4 text-slate-400">
+                <span>REST API Active</span>
+                <span>•</span>
+                <span>Python / Flask / GridFS</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

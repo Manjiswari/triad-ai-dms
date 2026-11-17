@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Advanced OCR Search - Triad AI DMS{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+        <h1 class="text-2xl font-bold text-slate-900 mb-2 flex items-center gap-2"><i class="fa-solid fa-magnifying-glass text-brand-600"></i> Advanced OCR & Metadata Search</h1>
+        <p class="text-slate-500 text-sm mb-6">Search across document titles, dynamic metadata fields, and OCR extracted contents.</p>
+        <form onsubmit="handleSearch(event)" class="space-y-4">
+            <div class="relative">
+                <input type="text" id="search-query-input" placeholder="Search keywords in text, invoice numbers, metadata..." class="w-full pl-12 pr-28 py-3.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 text-sm">
+                <i class="fa-solid fa-search absolute left-4 top-4 text-slate-400"></i>
+                <button type="submit" class="absolute right-2 top-2 px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-semibold text-xs">Search</button>
+            </div>
+            <div class="flex flex-wrap items-center gap-4 text-xs">
+                <div class="flex items-center gap-2">
+                    <span class="font-semibold text-slate-500 uppercase">Division:</span>
+                    <select id="search-division-filter" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50"><option value="">All Divisions</option></select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="font-semibold text-slate-500 uppercase">Report Type:</span>
+                    <select id="search-report-type-filter" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50"><option value="">All Report Types</option></select>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div id="search-results-list" class="space-y-4"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    async function initSearchPage() {
+        const divRes = await apiFetch('/divisions');
+        if (divRes.ok && divRes.data?.divisions) {
+            const select = document.getElementById('search-division-filter');
+            divRes.data.divisions.forEach(d => { select.innerHTML += `<option value="${d}">${d}</option>`; });
+        }
+        const fieldsRes = await apiFetch('/fields');
+        if (fieldsRes.ok && fieldsRes.data?.fields) {
+            const rt = fieldsRes.data.fields.find(f => f.name === 'Report Type');
+            if (rt && rt.options) {
+                const select = document.getElementById('search-report-type-filter');
+                rt.options.forEach(opt => { select.innerHTML += `<option value="${opt}">${opt}</option>`; });
+            }
+        }
+        performSearch();
+    }
+    function handleSearch(e) {
+        e.preventDefault();
+        performSearch();
+    }
+    async function performSearch() {
+        const query = document.getElementById('search-query-input').value.trim();
+        const division = document.getElementById('search-division-filter').value;
+        const reportType = document.getElementById('search-report-type-filter').value;
+        const list = document.getElementById('search-results-list');
+        list.innerHTML = '<p class="text-xs text-slate-400 p-6 text-center">Searching...</p>';
+
+        let params = [];
+        if (query) params.push(`q=${encodeURIComponent(query)}`);
+        if (division) params.push(`division=${encodeURIComponent(division)}`);
+        if (reportType) params.push(`Report Type=${encodeURIComponent(reportType)}`);
+
+        const res = await apiFetch(`/search?${params.join('&')}`);
+        if (!res.ok || !res.data?.results || res.data.results.length === 0) {
+            list.innerHTML = '<div class="bg-white p-8 text-center rounded-2xl border border-dashed border-slate-300 text-xs text-slate-400">No matching documents found.</div>';
+            return;
+        }
+
+        list.innerHTML = '';
+        res.data.results.forEach(doc => {
+            const card = document.createElement('div');
+            card.className = 'bg-white p-5 rounded-2xl border border-slate-200 shadow-sm';
+            let actionBtn = doc.can_download
+                ? `<a href="/api/documents/${doc.id}/download${getToken() ? '?token=' + getToken() : ''}" class="px-3.5 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold">Download</a>`
+                : `<a href="/documents/${doc.id}" class="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold">View Details</a>`;
+
+            card.innerHTML = `
+                <div class="flex items-start justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-slate-100">${doc.division}</span>
+                        <h3 class="text-base font-bold text-slate-900 mt-1"><a href="/documents/${doc.id}" class="hover:text-brand-600">${doc.title || doc.filename}</a></h3>
+                        ${doc.snippet ? `<div class="bg-slate-50 p-2.5 rounded-lg text-xs font-mono text-slate-600 mt-2">${doc.snippet}</div>` : ''}
+                    </div>
+                    <div>${actionBtn}</div>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+    }
+    document.addEventListener('DOMContentLoaded', initSearchPage);
+</script>
+{% endblock %}

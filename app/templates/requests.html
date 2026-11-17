@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Access Requests Inbox - Triad AI DMS{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Cross-Division Access Inbox</h1>
+            <p class="text-slate-500 text-sm mt-1">Review incoming access requests for your division's documents.</p>
+        </div>
+        <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+            <button id="btn-tab-incoming" onclick="switchRequestTab('incoming')" class="px-4 py-2 rounded-lg bg-white text-brand-700 shadow-sm">Incoming Requests</button>
+            <button id="btn-tab-outgoing" onclick="switchRequestTab('outgoing')" class="px-4 py-2 rounded-lg text-slate-600">Outgoing Requests</button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div id="requests-loading" class="p-12 text-center text-xs text-slate-400">Loading requests...</div>
+        <div id="requests-table-wrapper" class="hidden overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
+                        <th class="py-3 px-4">Document</th>
+                        <th class="py-3 px-4">Requester</th>
+                        <th class="py-3 px-4">Divisions</th>
+                        <th class="py-3 px-4">Reason</th>
+                        <th class="py-3 px-4">Status</th>
+                        <th class="py-3 px-4 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="requests-tbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+        <div id="requests-empty" class="hidden p-12 text-center text-slate-400 text-xs">No requests in this inbox.</div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    let activeTab = 'incoming';
+    function switchRequestTab(tab) {
+        activeTab = tab;
+        document.getElementById('btn-tab-incoming').className = tab === 'incoming' ? 'px-4 py-2 rounded-lg bg-white text-brand-700 shadow-sm' : 'px-4 py-2 rounded-lg text-slate-600';
+        document.getElementById('btn-tab-outgoing').className = tab !== 'incoming' ? 'px-4 py-2 rounded-lg bg-white text-brand-700 shadow-sm' : 'px-4 py-2 rounded-lg text-slate-600';
+        loadRequests();
+    }
+    async function loadRequests() {
+        const loading = document.getElementById('requests-loading');
+        const wrapper = document.getElementById('requests-table-wrapper');
+        const empty = document.getElementById('requests-empty');
+        const tbody = document.getElementById('requests-tbody');
+
+        loading.classList.remove('hidden');
+        wrapper.classList.add('hidden');
+        empty.classList.add('hidden');
+
+        const res = await apiFetch(`/access/requests?type=${activeTab}`);
+        loading.classList.add('hidden');
+
+        if (!res.ok || !res.data?.requests || res.data.requests.length === 0) {
+            empty.classList.remove('hidden');
+            return;
+        }
+
+        wrapper.classList.remove('hidden');
+        tbody.innerHTML = '';
+
+        res.data.requests.forEach(req => {
+            const tr = document.createElement('tr');
+            let statusBadge = req.status === 'approved' ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold uppercase text-[10px]">Approved</span>' : (req.status === 'rejected' ? '<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold uppercase text-[10px]">Rejected</span>' : '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold uppercase text-[10px]">Pending</span>');
+            let actionHtml = '';
+            if (activeTab === 'incoming' && req.status === 'pending') {
+                actionHtml = `<div class="flex items-center justify-end gap-1.5"><button onclick="reviewRequest('${req.id}', 'approved')" class="px-3 py-1 bg-emerald-600 text-white rounded font-semibold text-xs">Approve</button><button onclick="reviewRequest('${req.id}', 'rejected')" class="px-3 py-1 bg-rose-100 text-rose-700 rounded font-semibold text-xs">Reject</button></div>`;
+            } else if (activeTab === 'outgoing' && req.status === 'approved') {
+                actionHtml = `<a href="/documents/${req.doc_id}" class="text-emerald-600 font-semibold">View & Download</a>`;
+            } else {
+                actionHtml = `<span class="text-slate-400 italic">${req.status}</span>`;
+            }
+
+            tr.innerHTML = `
+                <td class="py-3 px-4 font-semibold text-slate-800"><a href="/documents/${req.doc_id}" class="hover:text-brand-600">${req.document_title || 'Document'}</a></td>
+                <td class="py-3 px-4">${req.requester_username}</td>
+                <td class="py-3 px-4">${req.requester_division} &rarr; ${req.document_division}</td>
+                <td class="py-3 px-4 max-w-xs truncate">${req.reason || '—'}</td>
+                <td class="py-3 px-4">${statusBadge}</td>
+                <td class="py-3 px-4 text-right">${actionHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    async function reviewRequest(requestId, status) {
+        const comments = prompt(`Enter optional comment for ${status}:`, `Reviewed`);
+        if (comments === null) return;
+        const res = await apiFetch('/access/approve', {
+            method: 'POST',
+            body: JSON.stringify({ request_id: requestId, status: status, comments: comments })
+        });
+        if (res.ok) {
+            showToast(`Request ${status}!`, 'success');
+            loadRequests();
+            checkPendingRequestsCount();
+        } else {
+            showToast(res.data?.error || 'Failed', 'error');
+        }
+    }
+    document.addEventListener('DOMContentLoaded', loadRequests);
+</script>
+{% endblock %}

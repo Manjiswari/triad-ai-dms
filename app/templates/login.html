@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Sign In / Register - Triad AI DMS{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto my-8 bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+    <div class="flex border-b border-slate-200 mb-6">
+        <button id="tab-btn-login" onclick="switchAuthTab('login')" class="w-1/2 pb-3 font-semibold text-sm text-center border-b-2 border-brand-600 text-brand-600">Sign In</button>
+        <button id="tab-btn-register" onclick="switchAuthTab('register')" class="w-1/2 pb-3 font-semibold text-sm text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600">Register</button>
+    </div>
+
+    <form id="form-login" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+        <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Username or Email</label>
+            <input type="text" id="login-identifier" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm" placeholder="alice or alice@divisiona.com">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Password</label>
+            <input type="password" id="login-password" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm" placeholder="••••••••">
+        </div>
+        <button type="submit" class="w-full py-2.5 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow transition">Sign In</button>
+        <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-500">
+            <span class="font-semibold block mb-2">Demo Accounts (Click to fill):</span>
+            <div class="grid grid-cols-3 gap-2">
+                <button type="button" onclick="fillLogin('alice', 'Alice@123')" class="p-2 bg-slate-50 hover:bg-emerald-50 rounded border border-slate-200 text-left">
+                    <strong class="text-slate-700 block">Alice</strong><span class="text-[10px] text-emerald-600">Division A</span>
+                </button>
+                <button type="button" onclick="fillLogin('bob', 'Bob@123')" class="p-2 bg-slate-50 hover:bg-blue-50 rounded border border-slate-200 text-left">
+                    <strong class="text-slate-700 block">Bob</strong><span class="text-[10px] text-blue-600">Division B</span>
+                </button>
+                <button type="button" onclick="fillLogin('admin', 'Admin@123')" class="p-2 bg-slate-50 hover:bg-purple-50 rounded border border-slate-200 text-left">
+                    <strong class="text-slate-700 block">Admin</strong><span class="text-[10px] text-purple-600">Admin</span>
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <form id="form-register" onsubmit="handleRegisterSubmit(event)" class="space-y-4 hidden">
+        <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Username</label>
+            <input type="text" id="reg-username" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" placeholder="username">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Email</label>
+            <input type="email" id="reg-email" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" placeholder="user@company.com">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Password</label>
+            <input type="password" id="reg-password" required minlength="4" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Division Assignment</label>
+            <select id="reg-division" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white">
+                <option value="Division A">Division A</option>
+                <option value="Division B">Division B</option>
+                <option value="Division C">Division C</option>
+                <option value="Engineering">Engineering</option>
+                <option value="Finance">Finance</option>
+            </select>
+        </div>
+        <button type="submit" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow transition">Create Account</button>
+    </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    function switchAuthTab(tab) {
+        document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
+        document.getElementById('form-register').classList.toggle('hidden', tab === 'login');
+        document.getElementById('tab-btn-login').className = tab === 'login' ? 'w-1/2 pb-3 font-semibold text-sm text-center border-b-2 border-brand-600 text-brand-600' : 'w-1/2 pb-3 font-semibold text-sm text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600';
+        document.getElementById('tab-btn-register').className = tab !== 'login' ? 'w-1/2 pb-3 font-semibold text-sm text-center border-b-2 border-brand-600 text-brand-600' : 'w-1/2 pb-3 font-semibold text-sm text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600';
+    }
+    function fillLogin(u, p) {
+        document.getElementById('login-identifier').value = u;
+        document.getElementById('login-password').value = p;
+    }
+    async function handleLoginSubmit(e) {
+        e.preventDefault();
+        const res = await apiFetch('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({
+                username: document.getElementById('login-identifier').value.trim(),
+                password: document.getElementById('login-password').value
+            })
+        });
+        if (res.ok && res.data?.token) {
+            setToken(res.data.token);
+            setCurrentUser(res.data.user);
+            showToast('Welcome back, ' + res.data.user.username + '!', 'success');
+            setTimeout(() => window.location.href = '/', 400);
+        } else {
+            showToast(res.data?.error || 'Invalid credentials', 'error');
+        }
+    }
+    async function handleRegisterSubmit(e) {
+        e.preventDefault();
+        const res = await apiFetch('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({
+                username: document.getElementById('reg-username').value.trim(),
+                email: document.getElementById('reg-email').value.trim(),
+                password: document.getElementById('reg-password').value,
+                division: document.getElementById('reg-division').value
+            })
+        });
+        if (res.ok && res.data?.token) {
+            setToken(res.data.token);
+            setCurrentUser(res.data.user);
+            showToast('Account registered successfully!', 'success');
+            setTimeout(() => window.location.href = '/', 400);
+        } else {
+            showToast(res.data?.error || 'Registration failed', 'error');
+        }
+    }
+    if (new URLSearchParams(window.location.search).get('tab') === 'register') {
+        switchAuthTab('register');
+    }
+</script>
+{% endblock %}
